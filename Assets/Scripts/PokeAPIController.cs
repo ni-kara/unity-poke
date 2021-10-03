@@ -9,28 +9,48 @@ using UnityEngine.UI;
 public class PokeAPIController : MonoBehaviour
 {
     public RawImage pokeImage;
-    public TextMeshProUGUI pokeName;
-    public TextMeshProUGUI pokeID;
+    public TextMeshProUGUI pokeNameText;
+    public TextMeshProUGUI pokeIDText;
     public TextMeshProUGUI[] pokeTypeArray;
 
     public Button pokeRandomBtn;
+    public TMP_InputField idInput;
+    public Button pokeByIdBtn;
 
     // Start is called before the first frame update
     void Start()
     {
-        pokeName.text = pokeID.text = "";
-        pokeRandomBtn.onClick.AddListener(BtnRandomPoke);
+        pokeRandomBtn.onClick.AddListener(delegate { BtnRandomPoke(); });
+        pokeByIdBtn.onClick.AddListener(delegate { BtnRandomPoke(int.Parse(idInput.text)); });
+        
         InitialUI();
     }
-    public void BtnRandomPoke()
+    public void BtnRandomPoke(int id = -1)
     {
-        int rndPokeID = Random.Range(1, 887);
+        int pokeID;
+        if (id == -1)
+        {
+            pokeID = Random.Range(1, 887);
+        }
+        else
+        {
+            pokeID = id;
+        }
+        print(isIdValid(pokeID));
+        if (isIdValid(pokeID))
+        {
 
-        pokeName.text = "Loading...";
-        pokeID.text = "#" + rndPokeID;
+            pokeNameText.text = "Loading...";
+            pokeIDText.text = "#" + pokeID;
 
-        InitialUI();
-        StartCoroutine(HttpManager.GetPokeAtIndex(rndPokeID,OnCompleteGetPoke));
+            idInput.GetComponent<Outline>().enabled = false;
+            
+            StartCoroutine(HttpManager.GetPokeAtIndex(pokeID, OnCompleteGetPoke));
+        }
+        else
+        {
+            idInput.GetComponent<Outline>().enabled = true;
+        }
     }
 
     private void OnCompleteGetPoke(JSONNode pokeInfo)
@@ -44,8 +64,7 @@ public class PokeAPIController : MonoBehaviour
 
     private void ViewPoke(JSONNode pokeInfo)
     {
-        print(pokeInfo["name"]);
-        pokeName.text = FirstLetterUppercase(pokeInfo["name"]);
+        pokeNameText.text = FirstLetterUppercase(pokeInfo["name"]);
         JSONNode types = pokeInfo["types"];
         for (int i = 0; i < types.Count; i++)
         {
@@ -61,6 +80,7 @@ public class PokeAPIController : MonoBehaviour
 
     private void InitialUI()
     {
+        pokeNameText.text = pokeIDText.text = "";
         pokeImage.texture = Texture2D.whiteTexture;
 
         foreach (var pokeType in pokeTypeArray)
@@ -68,8 +88,13 @@ public class PokeAPIController : MonoBehaviour
             pokeType.text = "";
         }
     }
-
+    private bool isIdValid(int id)
+    {
+        if (id <= 0 || id >= 887)
+            return false;
+        else
+            return true;
+    }
     private string FirstLetterUppercase(string str) => 
         char.ToUpper(str[0]) + str.Substring(1);
-    
 }
