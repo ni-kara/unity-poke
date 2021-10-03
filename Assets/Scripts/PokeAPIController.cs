@@ -13,15 +13,15 @@ public class PokeAPIController : MonoBehaviour
     public TextMeshProUGUI pokeID;
     public TextMeshProUGUI[] pokeTypeArray;
 
-    private readonly string basePokeURL = "https://pokeapi.co/api/v2/";
+    public Button pokeRandomBtn;
+
     // Start is called before the first frame update
     void Start()
     {
         pokeName.text = pokeID.text = "";
-
+        pokeRandomBtn.onClick.AddListener(BtnRandomPoke);
         InitialUI();
     }
-
     public void BtnRandomPoke()
     {
         int rndPokeID = Random.Range(1, 887);
@@ -30,49 +30,32 @@ public class PokeAPIController : MonoBehaviour
         pokeID.text = "#" + rndPokeID;
 
         InitialUI();
-
-        StartCoroutine(GetPokeAtIndex(rndPokeID));
+        StartCoroutine(HttpManager.GetPokeAtIndex(rndPokeID,OnCompleteGetPoke));
     }
 
-    IEnumerator GetPokeAtIndex(int rndPokeID)
+    private void OnCompleteGetPoke(JSONNode pokeInfo)
     {
-        string url = basePokeURL + "pokemon/" + rndPokeID;
-        UnityWebRequest pokeRequest = UnityWebRequest.Get(url);
+        ViewPoke(pokeInfo);
+        StartCoroutine(HttpManager.GetPokeSprite(pokeInfo["sprites"]["front_default"], OnCompleteGetPokeSprite));
+    }
 
-        yield return pokeRequest.SendWebRequest();
+    private void OnCompleteGetPokeSprite(Texture2D text2D)=>
+        ViewPokeSprite(text2D);
 
-        if (pokeRequest.isHttpError || pokeRequest.isNetworkError)
-        {
-            Debug.LogError(pokeRequest.error);
-            yield break;
-        }
-
-        JSONNode pokeInfo = JSON.Parse(pokeRequest.downloadHandler.text);
-
+    private void ViewPoke(JSONNode pokeInfo)
+    {
+        print(pokeInfo["name"]);
         pokeName.text = FirstLetterUppercase(pokeInfo["name"]);
-
         JSONNode types = pokeInfo["types"];
         for (int i = 0; i < types.Count; i++)
         {
             pokeTypeArray[i].text = types[i]["type"]["name"];
         }
-
-        string pokeSpriteURL = pokeInfo["sprites"]["front_default"];
-        StartCoroutine(GetPokeSprite(pokeSpriteURL));
     }
 
-    IEnumerator GetPokeSprite(string pokeSpriteURL)
+    private void ViewPokeSprite(Texture2D text2D)
     {
-        UnityWebRequest pokeSpriteRequest = UnityWebRequestTexture.GetTexture(pokeSpriteURL);
-        yield return pokeSpriteRequest.SendWebRequest();
-
-        if (pokeSpriteRequest.isHttpError || pokeSpriteRequest.isNetworkError)
-        {
-            Debug.LogError(pokeSpriteRequest.error);
-            yield break;
-        }
-
-        pokeImage.texture= DownloadHandlerTexture.GetContent(pokeSpriteRequest);
+        pokeImage.texture = text2D;
         pokeImage.texture.filterMode = FilterMode.Point;
     }
 
@@ -86,8 +69,7 @@ public class PokeAPIController : MonoBehaviour
         }
     }
 
-    private string FirstLetterUppercase(string str)
-    {
-        return char.ToUpper(str[0]) + str.Substring(1);
-    }
+    private string FirstLetterUppercase(string str) => 
+        char.ToUpper(str[0]) + str.Substring(1);
+    
 }
